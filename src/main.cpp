@@ -3,6 +3,9 @@
 #include "json.hpp"
 #include <math.h>
 #include "particle_filter.h"
+#ifdef USE_LATEST_UWS
+	#include <direct.h>
+#endif
 
 using namespace std;
 
@@ -36,7 +39,20 @@ int main() {
 
 	// Read map data
 	Map map;
+#ifdef USE_LATEST_UWS
+	char *buffer;
+
+	// Get the current working directory:
+	if ((buffer = _getcwd(NULL, 0)) == NULL)
+		perror("_getcwd error");
+	else {
+		printf("%s \nLength: %d\n", buffer, strnlen(buffer, 1024));
+		free(buffer);
+	}
+	if (!read_map_data("data/map_data.txt", map)) {
+#else
 	if (!read_map_data("../data/map_data.txt", map)) {
+#endif
 		cout << "Error: Could not open map file" << endl;
 		return -1;
 	}

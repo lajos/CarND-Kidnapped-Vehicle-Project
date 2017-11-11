@@ -12,7 +12,6 @@
 #include "helper_functions.h"
 
 struct Particle {
-
 	int id;
 	double x;
 	double y;
@@ -26,20 +25,18 @@ struct Particle {
 
 
 class ParticleFilter {
-	
+
 	// Number of particles to draw
-	int num_particles; 
-	
-	
-	
+	int num_particles;
+
 	// Flag, if filter is initialized
 	bool is_initialized;
-	
+
 	// Vector of weights of all particles
 	std::vector<double> weights;
-	
+
 public:
-	
+
 	// Set of current particles
 	std::vector<Particle> particles;
 
@@ -71,7 +68,7 @@ public:
 	 * @param yaw_rate Yaw rate of car from t to t+1 [rad/s]
 	 */
 	void prediction(double delta_t, double std_pos[], double velocity, double yaw_rate);
-	
+
 	/**
 	 * dataAssociation Finds which observations correspond to which landmarks (likely by using
 	 *   a nearest-neighbors data association).
@@ -79,30 +76,37 @@ public:
 	 * @param observations Vector of landmark observations
 	 */
 	void dataAssociation(std::vector<LandmarkObs> predicted, std::vector<LandmarkObs>& observations);
-	
+
 	/**
-	 * updateWeights Updates the weights for each particle based on the likelihood of the 
-	 *   observed measurements. 
+	 * updateWeights Updates the weights for each particle based on the likelihood of the
+	 *   observed measurements.
 	 * @param sensor_range Range [m] of sensor
 	 * @param std_landmark[] Array of dimension 2 [Landmark measurement uncertainty [x [m], y [m]]]
 	 * @param observations Vector of landmark observations
 	 * @param map Map class containing map landmarks
 	 */
-	void updateWeights(double sensor_range, double std_landmark[], const std::vector<LandmarkObs> &observations,
-			const Map &map_landmarks);
-	
+	void updateWeights(double sensor_range, double std_landmark[], const std::vector<LandmarkObs>& observations,
+					   const Map& map_landmarks);
+
 	/**
 	 * resample Resamples from the updated set of particles to form
 	 *   the new set of particles.
 	 */
 	void resample();
 
+	// update particle position and heading based on speed [v] and yaw rate [yaw_dot] for elapsed time [dt]
+	void updateParticle(Particle& p, const double& v, const double& yaw_dot, const double& dt);
+
+	// add noise to particle position and heading based on noise parameters [std_pos]
+	void addParticleNoise(Particle& p, const double std_pos[]);
+
+
 	/*
 	 * Set a particles list of associations, along with the associations calculated world x,y coordinates
 	 * This can be a very useful debugging tool to make sure transformations are correct and assocations correctly connected
 	 */
 	Particle SetAssociations(Particle particle, std::vector<int> associations, std::vector<double> sense_x, std::vector<double> sense_y);
-	
+
 	std::string getAssociations(Particle best);
 	std::string getSenseX(Particle best);
 	std::string getSenseY(Particle best);
@@ -113,8 +117,16 @@ public:
 	const bool initialized() const {
 		return is_initialized;
 	}
-};
 
+private:
+	inline double constrainRadian(double x) {
+		if (x > M_PI)
+			return fmod(x - M_PI, 2 * M_PI) - M_PI;
+		else if (x < -M_PI)
+			return fmod(x + M_PI, 2 * M_PI) + M_PI;
+		return x;
+	}
+};
 
 
 #endif /* PARTICLE_FILTER_H_ */
