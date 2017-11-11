@@ -77,6 +77,13 @@ public:
 	 */
 	void dataAssociation(std::vector<LandmarkObs> predicted, std::vector<LandmarkObs>& observations);
 
+	// add observation [obs] to particle [p] transforming coordinates to the particle's space, add converted
+	// observation to [p_observations]
+	void addObservation(Particle& p, const LandmarkObs& obs, const double& sensor_range, std::vector<LandmarkObs>& p_observations);
+
+	// find landmarks closest to sensed values, using subset of landmarks
+	void findNearestLandmarks(Particle& p, const std::vector<LandmarkObs>& landmarks);
+
 	/**
 	 * updateWeights Updates the weights for each particle based on the likelihood of the
 	 *   observed measurements.
@@ -119,6 +126,7 @@ public:
 	}
 
 private:
+	// constrain angle -M_PI .. M_PI range
 	inline double constrainRadian(double x) {
 		if (x > M_PI)
 			return fmod(x - M_PI, 2 * M_PI) - M_PI;
@@ -126,6 +134,23 @@ private:
 			return fmod(x + M_PI, 2 * M_PI) + M_PI;
 		return x;
 	}
+
+	// get distance between two points, (x1,y1) and (x2,y2)
+	inline double getDistance(const double& x1, const double& y1, const double& x2, const double& y2) {
+		return sqrt(pow(x1 - x2, 2) + pow(y1 - y2, 2));
+	}
+
+	// get distance between a point (x1,y1) and landmark
+	inline double getDistance(const double& x1, const double& y1, const LandmarkObs& landmark) {
+		return sqrt(pow(x1 - landmark.x, 2) + pow(y1 - landmark.y, 2));
+	}
+
+	// get distance between two landmarks
+	inline double getDistance(const LandmarkObs& l1, const LandmarkObs& l2) {
+		return sqrt(pow(l1.x - l2.x, 2) + pow(l1.y - l2.y, 2));
+	}
+
+
 };
 
 

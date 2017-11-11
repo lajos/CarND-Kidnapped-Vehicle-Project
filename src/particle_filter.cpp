@@ -82,66 +82,114 @@ void ParticleFilter::dataAssociation(std::vector<LandmarkObs> predicted, std::ve
 
 }
 
+inline void ParticleFilter::addObservation(Particle& p, const LandmarkObs& obs, const double& sensor_range, vector<LandmarkObs>& p_observations) {
+	const double yaw = constrainRadian(p.theta);
+	const double cosYaw = cos(yaw);
+	const double sinYaw = sin(yaw);
+	double t_x = p.x + cosYaw * obs.x - sinYaw * obs.y;  // transformed x
+	double t_y = p.y + sinYaw * obs.x + cosYaw * obs.y;  // transformed y
+	p.sense_x.push_back(t_x);
+	p.sense_y.push_back(t_y);
+	LandmarkObs t_obs = { -1, t_x, t_y };
+	p_observations.push_back(t_obs);
+	return;
+}
+
+
+void ParticleFilter::findNearestLandmarks(Particle& p, const vector<LandmarkObs>& landmarks) {
+
+}
+
 void ParticleFilter::updateWeights(double sensor_range, double std_landmark[],
 								   const std::vector<LandmarkObs>& observations, const Map& map_landmarks) {
-	// TODO: Update the weights of each particle using a mult-variate Gaussian distribution. You can read
-	//   more about this distribution here: https://en.wikipedia.org/wiki/Multivariate_normal_distribution
-	// NOTE: The observations are given in the VEHICLE'S coordinate system. Your particles are located
-	//   according to the MAP'S coordinate system. You will need to transform between the two systems.
-	//   Keep in mind that this transformation requires both rotation AND translation (but no scaling).
-	//   The following is a good resource for the theory:
-	//   https://www.willamette.edu/~gorr/classes/GeneralGraphics/Transforms/transforms2d.htm
-	//   and the following is a good resource for the actual equation to implement (look at equation
-	//   3.33
-	//   http://planning.cs.uiuc.edu/node99.html
-}
+	vector<LandmarkObs> possible_landmarks;
 
-void ParticleFilter::resample() {
-	// TODO: Resample particles with replacement with probability proportional to their weight.
-	// NOTE: You may find std::discrete_distribution helpful here.
-	//   http://en.cppreference.com/w/cpp/numeric/random/discrete_distribution
+	for (auto p_it = particles.begin(); p_it != particles.end(); ++p_it) {
+		p_it->sense_x.clear();
+		p_it->sense_y.clear();
+		p_it->associations.clear();
 
-}
+		vector<LandmarkObs> p_observations;
 
-Particle ParticleFilter::SetAssociations(Particle particle, std::vector<int> associations, std::vector<double> sense_x, std::vector<double> sense_y) {
-	//particle: the particle to assign each listed association, and association's (x,y) world coordinates mapping to
-	// associations: The landmark id that goes along with each listed association
-	// sense_x: the associations x mapping already converted to world coordinates
-	// sense_y: the associations y mapping already converted to world coordinates
+		for (auto o_it = observations.begin(); o_it != observations.end(); ++o_it) {
+			addObservation(*p_it, *o_it, sensor_range);
+		}
 
-	//Clear the previous associations
-	particle.associations.clear();
-	particle.sense_x.clear();
-	particle.sense_y.clear();
+		double px = p_it->x;
+		double py = p_it->y;
 
-	particle.associations = associations;
-	particle.sense_x = sense_x;
-	particle.sense_y = sense_y;
+		vector<LandmarkObs> valid_landmarks;
 
-	return particle;
-}
+		for (auto m_it = map_landmarks.landmark_list.begin(); m_it != map_landmarks.landmark_list.end(); ++m_it) {
+			if (getDistance(px, py, m_it->x_f, m_it->y_f) < sensor_range) {
+				LandmarkObs landmark = { m_it->id_i, m_it->x_f, m_it->y_f };
+				valid_landmarks.push_back(landmark);
+			}
+		}
 
-string ParticleFilter::getAssociations(Particle best) {
-	vector<int> v = best.associations;
-	stringstream ss;
-	copy(v.begin(), v.end(), ostream_iterator<int>(ss, " "));
-	string s = ss.str();
-	s = s.substr(0, s.length() - 1); // get rid of the trailing space
-	return s;
-}
-string ParticleFilter::getSenseX(Particle best) {
-	vector<double> v = best.sense_x;
-	stringstream ss;
-	copy(v.begin(), v.end(), ostream_iterator<float>(ss, " "));
-	string s = ss.str();
-	s = s.substr(0, s.length() - 1); // get rid of the trailing space
-	return s;
-}
-string ParticleFilter::getSenseY(Particle best) {
-	vector<double> v = best.sense_y;
-	stringstream ss;
-	copy(v.begin(), v.end(), ostream_iterator<float>(ss, " "));
-	string s = ss.str();
-	s = s.substr(0, s.length() - 1); // get rid of the trailing space
-	return s;
-}
+		for (auto o_it = p_observations.begin(); o_it != p_observations.end(); ++o_it) {
+			double best_distance = sensor_range;
+			int best_index = -1;
+			LandmarkObs best_landmark;
+			for (auto l_it = valid_landmarks.begin(); l_it != valid_landmarks.end(); ++l_it) {
+				double distance = getDistance(*o_it, *l_it);
+				if (distance < best_distance) {
+					best_distance = distance;
+					best_index = l_it->id;
+					best_landmark = *l_t;
+				}
+			}
+		}
+	}
+
+	void ParticleFilter::resample() {
+		// TODO: Resample particles with replacement with probability proportional to their weight.
+		// NOTE: You may find std::discrete_distribution helpful here.
+		//   http://en.cppreference.com/w/cpp/numeric/random/discrete_distribution
+
+	}
+
+	Particle ParticleFilter::SetAssociations(Particle particle, std::vector<int> associations, std::vector<double> sense_x, std::vector<double> sense_y) {
+		//particle: the particle to assign each listed association, and association's (x,y) world coordinates mapping to
+		// associations: The landmark id that goes along with each listed association
+		// sense_x: the associations x mapping already converted to world coordinates
+		// sense_y: the associations y mapping already converted to world coordinates
+
+		//Clear the previous associations
+		particle.associations.clear();
+		particle.sense_x.clear();
+		particle.sense_y.clear();
+
+		particle.associations = associations;
+		particle.sense_x = sense_x;
+		particle.sense_y = sense_y;
+
+		return particle;
+	}
+
+	string ParticleFilter::getAssociations(Particle best) {
+		vector<int> v = best.associations;
+		stringstream ss;
+		copy(v.begin(), v.end(), ostream_iterator<int>(ss, " "));
+		string s = ss.str();
+		s = s.substr(0, s.length() - 1); // get rid of the trailing space
+		return s;
+	}
+
+	string ParticleFilter::getSenseX(Particle best) {
+		vector<double> v = best.sense_x;
+		stringstream ss;
+		copy(v.begin(), v.end(), ostream_iterator<float>(ss, " "));
+		string s = ss.str();
+		s = s.substr(0, s.length() - 1); // get rid of the trailing space
+		return s;
+	}
+
+	string ParticleFilter::getSenseY(Particle best) {
+		vector<double> v = best.sense_y;
+		stringstream ss;
+		copy(v.begin(), v.end(), ostream_iterator<float>(ss, " "));
+		string s = ss.str();
+		s = s.substr(0, s.length() - 1); // get rid of the trailing space
+		return s;
+	}
