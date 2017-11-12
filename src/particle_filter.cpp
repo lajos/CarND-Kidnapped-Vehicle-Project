@@ -14,7 +14,6 @@
 #include <sstream>
 #include <string>
 #include <iterator>
-#include <map> // TODO remove
 
 #include "particle_filter.h"
 
