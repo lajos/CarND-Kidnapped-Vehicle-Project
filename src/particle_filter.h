@@ -107,6 +107,8 @@ public:
 	// add noise to particle position and heading based on noise parameters [std_pos]
 	void addParticleNoise(Particle& p, const double std_pos[]);
 
+	// calculate particle weight from observations and associated nearest landmarks, with sigma uncertainty for landmark positions
+	double calculateParticleWeight(const std::vector<LandmarkObs>& pObservations, const std::vector<LandmarkObs>& pLandmarks, const double sigma[]);
 
 	/*
 	 * Set a particles list of associations, along with the associations calculated world x,y coordinates

@@ -100,9 +100,27 @@ void ParticleFilter::findNearestLandmarks(Particle& p, const vector<LandmarkObs>
 
 }
 
+double ParticleFilter::calculateParticleWeight(const vector<LandmarkObs>& pObservations, const vector<LandmarkObs>& pLandmarks, const double sigma[]) {
+	auto o = pObservations.begin();
+	auto l = pLandmarks.begin();
+
+	double weight = 1;
+
+	double temp1 = 1.0 / (2 * M_PI * sigma[0] * sigma[1]);
+	double sigma2square[] = { 2 * pow(sigma[0], 2), 2 * pow(sigma[1], 2) };
+
+	do {
+		double w = temp1 * exp(-((pow(o->x - l->x, 2) / sigma2square[0]) + (pow(o->y - l->y, 2) / sigma2square[1])));
+		weight *= w;
+		++o;
+		++l;
+	} while (o != pObservations.end() && l != pLandmarks.end());
+
+	return weight;
+}
+
 void ParticleFilter::updateWeights(double sensor_range, double std_landmark[],
 								   const std::vector<LandmarkObs>& observations, const Map& map_landmarks) {
-	vector<LandmarkObs> possible_landmarks;
 
 	for (auto p_it = particles.begin(); p_it != particles.end(); ++p_it) {
 		p_it->sense_x.clear();
@@ -112,7 +130,7 @@ void ParticleFilter::updateWeights(double sensor_range, double std_landmark[],
 		vector<LandmarkObs> p_observations;
 
 		for (auto o_it = observations.begin(); o_it != observations.end(); ++o_it) {
-			addObservation(*p_it, *o_it, sensor_range);
+			addObservation(*p_it, *o_it, sensor_range, p_observations);
 		}
 
 		double px = p_it->x;
@@ -127,6 +145,8 @@ void ParticleFilter::updateWeights(double sensor_range, double std_landmark[],
 			}
 		}
 
+		vector<LandmarkObs> nearest_landmarks;
+
 		for (auto o_it = p_observations.begin(); o_it != p_observations.end(); ++o_it) {
 			double best_distance = sensor_range;
 			int best_index = -1;
@@ -136,60 +156,64 @@ void ParticleFilter::updateWeights(double sensor_range, double std_landmark[],
 				if (distance < best_distance) {
 					best_distance = distance;
 					best_index = l_it->id;
-					best_landmark = *l_t;
+					best_landmark = *l_it;
 				}
 			}
+			nearest_landmarks.push_back(best_landmark);
 		}
+
+		p_it->weight = calculateParticleWeight(p_observations, nearest_landmarks, std_landmark);
 	}
+}
 
-	void ParticleFilter::resample() {
-		// TODO: Resample particles with replacement with probability proportional to their weight.
-		// NOTE: You may find std::discrete_distribution helpful here.
-		//   http://en.cppreference.com/w/cpp/numeric/random/discrete_distribution
+void ParticleFilter::resample() {
+	// TODO: Resample particles with replacement with probability proportional to their weight.
+	// NOTE: You may find std::discrete_distribution helpful here.
+	//   http://en.cppreference.com/w/cpp/numeric/random/discrete_distribution
 
-	}
+}
 
-	Particle ParticleFilter::SetAssociations(Particle particle, std::vector<int> associations, std::vector<double> sense_x, std::vector<double> sense_y) {
-		//particle: the particle to assign each listed association, and association's (x,y) world coordinates mapping to
-		// associations: The landmark id that goes along with each listed association
-		// sense_x: the associations x mapping already converted to world coordinates
-		// sense_y: the associations y mapping already converted to world coordinates
+Particle ParticleFilter::SetAssociations(Particle particle, std::vector<int> associations, std::vector<double> sense_x, std::vector<double> sense_y) {
+	//particle: the particle to assign each listed association, and association's (x,y) world coordinates mapping to
+	// associations: The landmark id that goes along with each listed association
+	// sense_x: the associations x mapping already converted to world coordinates
+	// sense_y: the associations y mapping already converted to world coordinates
 
-		//Clear the previous associations
-		particle.associations.clear();
-		particle.sense_x.clear();
-		particle.sense_y.clear();
+	//Clear the previous associations
+	particle.associations.clear();
+	particle.sense_x.clear();
+	particle.sense_y.clear();
 
-		particle.associations = associations;
-		particle.sense_x = sense_x;
-		particle.sense_y = sense_y;
+	particle.associations = associations;
+	particle.sense_x = sense_x;
+	particle.sense_y = sense_y;
 
-		return particle;
-	}
+	return particle;
+}
 
-	string ParticleFilter::getAssociations(Particle best) {
-		vector<int> v = best.associations;
-		stringstream ss;
-		copy(v.begin(), v.end(), ostream_iterator<int>(ss, " "));
-		string s = ss.str();
-		s = s.substr(0, s.length() - 1); // get rid of the trailing space
-		return s;
-	}
+string ParticleFilter::getAssociations(Particle best) {
+	vector<int> v = best.associations;
+	stringstream ss;
+	copy(v.begin(), v.end(), ostream_iterator<int>(ss, " "));
+	string s = ss.str();
+	s = s.substr(0, s.length() - 1); // get rid of the trailing space
+	return s;
+}
 
-	string ParticleFilter::getSenseX(Particle best) {
-		vector<double> v = best.sense_x;
-		stringstream ss;
-		copy(v.begin(), v.end(), ostream_iterator<float>(ss, " "));
-		string s = ss.str();
-		s = s.substr(0, s.length() - 1); // get rid of the trailing space
-		return s;
-	}
+string ParticleFilter::getSenseX(Particle best) {
+	vector<double> v = best.sense_x;
+	stringstream ss;
+	copy(v.begin(), v.end(), ostream_iterator<float>(ss, " "));
+	string s = ss.str();
+	s = s.substr(0, s.length() - 1); // get rid of the trailing space
+	return s;
+}
 
-	string ParticleFilter::getSenseY(Particle best) {
-		vector<double> v = best.sense_y;
-		stringstream ss;
-		copy(v.begin(), v.end(), ostream_iterator<float>(ss, " "));
-		string s = ss.str();
-		s = s.substr(0, s.length() - 1); // get rid of the trailing space
-		return s;
-	}
+string ParticleFilter::getSenseY(Particle best) {
+	vector<double> v = best.sense_y;
+	stringstream ss;
+	copy(v.begin(), v.end(), ostream_iterator<float>(ss, " "));
+	string s = ss.str();
+	s = s.substr(0, s.length() - 1); // get rid of the trailing space
+	return s;
+}
