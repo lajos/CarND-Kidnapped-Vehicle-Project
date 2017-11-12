@@ -116,7 +116,7 @@ private:
 		double M_2PI = M_PI * 2;
 		if (x > M_2PI)
 			return fmod(x, M_2PI);
-		else if (x < -M_2PI)
+		else if (x < 0)
 			return fmod(x, M_2PI) + M_2PI;
 		return x;
 	}

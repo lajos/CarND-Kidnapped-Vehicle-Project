@@ -20,7 +20,7 @@
 using namespace std;
 
 void ParticleFilter::init(double x, double y, double theta, double std[]) {
-	num_particles = 25;
+	num_particles = 48;
 
 	double init_weight = 1.0 / num_particles;
 
@@ -34,7 +34,7 @@ void ParticleFilter::init(double x, double y, double theta, double std[]) {
 		Particle p;
 		p.x = dist_x(gen);
 		p.y = dist_y(gen);
-		p.theta = dist_theta(gen);
+		p.theta = constrainRadian(dist_theta(gen));
 		p.weight = init_weight;
 		particles.push_back(p);
 	}

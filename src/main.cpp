@@ -148,9 +148,11 @@ int main() {
 					json msgJson;
 					msgJson["best_particle_x"] = best_particle.x;
 					msgJson["best_particle_y"] = best_particle.y;
-					msgJson["best_particle_theta"] = best_particle.theta;
-					//auto theta = (best_particle.theta >= 0) ? best_particle.theta : best_particle.theta + 2 * M_PI;
-					//msgJson["best_particle_theta"] = theta;
+					//msgJson["best_particle_theta"] = best_particle.theta;
+					auto theta = best_particle.theta;
+					if (theta < 0 || theta > 2 * M_PI)
+						cout << "theta out of range: " << theta;
+					msgJson["best_particle_theta"] = theta;
 
 					//Optional message data used for debugging particle's sensing and associations
 					msgJson["best_particle_associations"] = pf.getAssociations(best_particle);
