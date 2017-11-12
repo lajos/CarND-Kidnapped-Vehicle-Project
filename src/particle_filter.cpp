@@ -123,14 +123,10 @@ void ParticleFilter::updateWeights(double sensor_range, double std_landmark[],
 								   const std::vector<LandmarkObs>& observations, const Map& map_landmarks) {
 
 	for (auto p_it = particles.begin(); p_it != particles.end(); ++p_it) {
-		p_it->sense_x.clear();
-		p_it->sense_y.clear();
-		p_it->associations.clear();
-
-		vector<LandmarkObs> p_observations;
+		vector<LandmarkObs> particle_observations;
 
 		for (auto o_it = observations.begin(); o_it != observations.end(); ++o_it) {
-			addObservation(*p_it, *o_it, sensor_range, p_observations);
+			addObservation(*p_it, *o_it, sensor_range, particle_observations);
 		}
 
 		double px = p_it->x;
@@ -147,7 +143,7 @@ void ParticleFilter::updateWeights(double sensor_range, double std_landmark[],
 
 		vector<LandmarkObs> nearest_landmarks;
 
-		for (auto o_it = p_observations.begin(); o_it != p_observations.end(); ++o_it) {
+		for (auto o_it = particle_observations.begin(); o_it != particle_observations.end(); ++o_it) {
 			double best_distance = sensor_range;
 			int best_index = -1;
 			LandmarkObs best_landmark;
@@ -162,7 +158,17 @@ void ParticleFilter::updateWeights(double sensor_range, double std_landmark[],
 			nearest_landmarks.push_back(best_landmark);
 		}
 
-		p_it->weight = calculateParticleWeight(p_observations, nearest_landmarks, std_landmark);
+		p_it->weight = calculateParticleWeight(particle_observations, nearest_landmarks, std_landmark);
+
+		// fill out particle associations and sense parameters
+		p_it->associations.clear();
+		p_it->sense_x.clear();
+		p_it->sense_y.clear();
+		for (auto l_it = nearest_landmarks.begin(); l_it != nearest_landmarks.end(); ++l_it) {
+			p_it->associations.push_back(l_it->id);
+			p_it->sense_x.push_back(l_it->x);
+			p_it->sense_y.push_back(l_it->y);
+		}
 	}
 }
 
