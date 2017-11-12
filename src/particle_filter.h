@@ -66,20 +66,9 @@ public:
 	 */
 	void prediction(double delta_t, double std_pos[], double velocity, double yaw_rate);
 
-	/**
-	 * dataAssociation Finds which observations correspond to which landmarks (likely by using
-	 *   a nearest-neighbors data association).
-	 * @param predicted Vector of predicted landmark observations
-	 * @param observations Vector of landmark observations
-	 */
-	void dataAssociation(std::vector<LandmarkObs> predicted, std::vector<LandmarkObs>& observations);
-
 	// add observation [obs] to particle [p] transforming coordinates to the particle's space, add converted
 	// observation to [p_observations]
 	void addObservation(Particle& p, const LandmarkObs& obs, const double& sensor_range, std::vector<LandmarkObs>& p_observations);
-
-	// find landmarks closest to sensed values, using subset of landmarks
-	void findNearestLandmarks(Particle& p, const std::vector<LandmarkObs>& landmarks);
 
 	/**
 	 * updateWeights Updates the weights for each particle based on the likelihood of the
@@ -99,7 +88,7 @@ public:
 	void resample();
 
 	// update particle position and heading based on speed [v] and yaw rate [yaw_dot] for elapsed time [dt]
-	void updateParticle(Particle& p, const double& v, const double& yaw_dot, const double& dt);
+	void updateParticle(Particle *p, const double& v, const double& yaw_dot, const double& dt);
 
 	// calculate particle weight from observations and associated nearest landmarks, with sigma uncertainty for landmark positions
 	double calculateParticleWeight(const std::vector<LandmarkObs>& pObservations, const std::vector<LandmarkObs>& pLandmarks, const double sigma[]);
@@ -122,12 +111,13 @@ public:
 	}
 
 private:
-	// constrain angle -M_PI .. M_PI range
+	// constrain angle 0 .. 2*M_PI range
 	inline double constrainRadian(double x) {
-		if (x > M_PI)
-			return fmod(x - M_PI, 2 * M_PI) - M_PI;
-		else if (x < -M_PI)
-			return fmod(x + M_PI, 2 * M_PI) + M_PI;
+		double M_2PI = M_PI * 2;
+		if (x > M_2PI)
+			return fmod(x, M_2PI);
+		else if (x < -M_2PI)
+			return fmod(x, M_2PI) + M_2PI;
 		return x;
 	}
 

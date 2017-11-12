@@ -142,14 +142,15 @@ int main() {
 						}
 						weight_sum += particles[i].weight;
 					}
-					cout << "highest w " << highest_weight << endl;
-					cout << "average w " << weight_sum / num_particles << endl;
+					//cout << "highest w " << highest_weight << endl;
+					//cout << "average w " << weight_sum / num_particles << endl;
 
 					json msgJson;
 					msgJson["best_particle_x"] = best_particle.x;
 					msgJson["best_particle_y"] = best_particle.y;
-					auto theta = (best_particle.theta >= 0) ? best_particle.theta : best_particle.theta + 2 * M_PI;
-					msgJson["best_particle_theta"] = theta;
+					msgJson["best_particle_theta"] = best_particle.theta;
+					//auto theta = (best_particle.theta >= 0) ? best_particle.theta : best_particle.theta + 2 * M_PI;
+					//msgJson["best_particle_theta"] = theta;
 
 					//Optional message data used for debugging particle's sensing and associations
 					msgJson["best_particle_associations"] = pf.getAssociations(best_particle);

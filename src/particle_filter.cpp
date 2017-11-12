@@ -43,18 +43,6 @@ void ParticleFilter::init(double x, double y, double theta, double std[]) {
 	is_initialized = true;
 }
 
-void ParticleFilter::updateParticle(Particle& p, const double& v, const double& yaw_dot, const double& dt) {
-	double yaw_new = p.theta + yaw_dot * dt;
-	if (yaw_dot < 0.0000001) {			// avoid division by zero if yaw_dot change too small
-		p.x += dt * v * cos(yaw_new);
-		p.y += dt * v * sin(yaw_new);
-	} else {
-		p.x = p.x + v / yaw_dot * (sin(yaw_new) - sin(p.theta));
-		p.y = p.y + v / yaw_dot * (cos(p.theta) - cos(yaw_new));
-	}
-	p.theta = constrainRadian(yaw_new);
-}
-
 
 void ParticleFilter::prediction(double delta_t, double std_pos[], double velocity, double yaw_rate) {
 	default_random_engine gen;
@@ -64,30 +52,37 @@ void ParticleFilter::prediction(double delta_t, double std_pos[], double velocit
 	normal_distribution<double> dist_theta(0, std_pos[2]);
 
 	for (auto it = particles.begin(); it != particles.end(); ++it) {
-		updateParticle(*it, velocity, yaw_rate, delta_t);
+
+		// update particle position and yaw using bicycle model
+		//
+		double yaw = it->theta;
+		double yaw_new = yaw + yaw_rate * delta_t;
+		if (yaw_rate < 0.0000001) {			// avoid division by zero if yaw change too small
+			it->x += delta_t *velocity * cos(yaw_new);
+			it->y += delta_t *velocity * sin(yaw_new);
+		} else {
+			it->x += velocity / yaw_rate * (sin(yaw_new) - sin(yaw));
+			it->y += velocity / yaw_rate * (cos(yaw) - cos(yaw_new));
+		}
+		it->theta = yaw_new;
+
+		// add noise
+		//
 		it->x += dist_x(gen);
 		it->y += dist_y(gen);
 		it->theta = constrainRadian(it->theta + dist_theta(gen));
 	}
-	//cout << "a" << endl;
 }
 
 inline void ParticleFilter::addObservation(Particle& p, const LandmarkObs& obs, const double& sensor_range, vector<LandmarkObs>& p_observations) {
-	const double yaw = constrainRadian(p.theta);
+	const double yaw = p.theta;
 	const double cosYaw = cos(yaw);
 	const double sinYaw = sin(yaw);
 	double t_x = p.x + cosYaw * obs.x - sinYaw * obs.y;  // transformed x
 	double t_y = p.y + sinYaw * obs.x + cosYaw * obs.y;  // transformed y
-	p.sense_x.push_back(t_x);
-	p.sense_y.push_back(t_y);
 	LandmarkObs t_obs = { -1, t_x, t_y };
 	p_observations.push_back(t_obs);
 	return;
-}
-
-
-void ParticleFilter::findNearestLandmarks(Particle& p, const vector<LandmarkObs>& landmarks) {
-
 }
 
 double ParticleFilter::calculateParticleWeight(const vector<LandmarkObs>& pObservations, const vector<LandmarkObs>& pLandmarks, const double sigma[]) {
@@ -122,8 +117,9 @@ void ParticleFilter::updateWeights(double sensor_range, double std_landmark[],
 		double px = p_it->x;
 		double py = p_it->y;
 
+		// create vector of landmarks in sensor range
+		//
 		vector<LandmarkObs> valid_landmarks;
-
 		for (auto m_it = map_landmarks.landmark_list.begin(); m_it != map_landmarks.landmark_list.end(); ++m_it) {
 			if (getDistance(px, py, m_it->x_f, m_it->y_f) < sensor_range) {
 				LandmarkObs landmark = { m_it->id_i, m_it->x_f, m_it->y_f };
@@ -131,8 +127,9 @@ void ParticleFilter::updateWeights(double sensor_range, double std_landmark[],
 			}
 		}
 
+		// find nearest landmark to each observation
+		//
 		vector<LandmarkObs> nearest_landmarks;
-
 		for (auto o_it = particle_observations.begin(); o_it != particle_observations.end(); ++o_it) {
 			double best_distance = sensor_range;
 			int best_index = -1;
@@ -151,6 +148,7 @@ void ParticleFilter::updateWeights(double sensor_range, double std_landmark[],
 		p_it->weight = calculateParticleWeight(particle_observations, nearest_landmarks, std_landmark);
 
 		// fill out particle associations and sense parameters
+		//
 		p_it->associations.clear();
 		p_it->sense_x.clear();
 		p_it->sense_y.clear();
@@ -163,24 +161,9 @@ void ParticleFilter::updateWeights(double sensor_range, double std_landmark[],
 }
 
 void ParticleFilter::resample() {
-	// TODO: Resample particles with replacement with probability proportional to their weight.
-	// NOTE: You may find std::discrete_distribution helpful here.
-	//   http://en.cppreference.com/w/cpp/numeric/random/discrete_distribution
 
-	//W2max = max(w) * 2
-	//	w_i = 0
-
-	//	for i in range(N) :
-	//		beta = random.gauss(0, W2max)
-	//		while w[w_i] < beta :
-	//			beta = beta - w[w_i]
-	//			w_i += 1
-	//			if w_i >= N :
-	//				w_i = 0
-	//				p3.append(p[w_i])
-
-	//double w_max = 0;
-
+	// create weights vector for discrete distribution initialization
+	//
 	vector<double> weights;
 	double weight_sum = 0;
 	for (auto p_it = particles.begin(); p_it != particles.end(); ++p_it) {
@@ -190,14 +173,14 @@ void ParticleFilter::resample() {
 
 	}
 
-	cout << "weight_sum: " << weight_sum << endl;
-
 	if (weight_sum == 0) return;
 
 	std::random_device rd;
 	std::mt19937 gen(rd());
 	std::discrete_distribution<size_t> d(weights.begin(), weights.end());
 
+	// resample particles based on weight discrete distribution
+	//
 	vector<Particle> resampled_particles;
 	for (size_t i = 0; i < num_particles; ++i) {
 		resampled_particles.push_back(particles[d(gen)]);
