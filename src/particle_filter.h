@@ -87,9 +87,6 @@ public:
 	 */
 	void resample();
 
-	// update particle position and heading based on speed [v] and yaw rate [yaw_dot] for elapsed time [dt]
-	void updateParticle(Particle *p, const double& v, const double& yaw_dot, const double& dt);
-
 	// calculate particle weight from observations and associated nearest landmarks, with sigma uncertainty for landmark positions
 	double calculateParticleWeight(const std::vector<LandmarkObs>& pObservations, const std::vector<LandmarkObs>& pLandmarks, const double sigma[]);
 
