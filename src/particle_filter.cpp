@@ -14,13 +14,14 @@
 #include <sstream>
 #include <string>
 #include <iterator>
+#include <map> // TODO remove
 
 #include "particle_filter.h"
 
 using namespace std;
 
 void ParticleFilter::init(double x, double y, double theta, double std[]) {
-	num_particles = 1000;
+	num_particles = 25;
 
 	double init_weight = 1.0 / num_particles;
 
@@ -44,42 +45,31 @@ void ParticleFilter::init(double x, double y, double theta, double std[]) {
 
 void ParticleFilter::updateParticle(Particle& p, const double& v, const double& yaw_dot, const double& dt) {
 	double yaw_new = p.theta + yaw_dot * dt;
-	p.x = p.x + v / yaw_dot * (sin(yaw_new) - sin(p.theta));
-	p.y = p.y + v / yaw_dot * (cos(p.theta) - cos(yaw_new));
+	if (yaw_dot < 0.0000001) {			// avoid division by zero if yaw_dot change too small
+		p.x += dt * v * cos(yaw_new);
+		p.y += dt * v * sin(yaw_new);
+	} else {
+		p.x = p.x + v / yaw_dot * (sin(yaw_new) - sin(p.theta));
+		p.y = p.y + v / yaw_dot * (cos(p.theta) - cos(yaw_new));
+	}
 	p.theta = constrainRadian(yaw_new);
 }
 
-void ParticleFilter::addParticleNoise(Particle& p, const double std_pos[]) {
+
+void ParticleFilter::prediction(double delta_t, double std_pos[], double velocity, double yaw_rate) {
 	default_random_engine gen;
 
 	normal_distribution<double> dist_x(0, std_pos[0]);
 	normal_distribution<double> dist_y(0, std_pos[1]);
 	normal_distribution<double> dist_theta(0, std_pos[2]);
 
-	p.x += dist_x(gen);
-	p.y += dist_y(gen);
-	p.theta += dist_theta(gen);
-}
-
-void ParticleFilter::prediction(double delta_t, double std_pos[], double velocity, double yaw_rate) {
-	// TODO: Add measurements to each particle and add random Gaussian noise.
-	// NOTE: When adding noise you may find std::normal_distribution and std::default_random_engine useful.
-	//  http://en.cppreference.com/w/cpp/numeric/random/normal_distribution
-	//  http://www.cplusplus.com/reference/random/default_random_engine/
-
 	for (auto it = particles.begin(); it != particles.end(); ++it) {
 		updateParticle(*it, velocity, yaw_rate, delta_t);
-		addParticleNoise(*it, std_pos);
+		it->x += dist_x(gen);
+		it->y += dist_y(gen);
+		it->theta = constrainRadian(it->theta + dist_theta(gen));
 	}
-
-}
-
-void ParticleFilter::dataAssociation(std::vector<LandmarkObs> predicted, std::vector<LandmarkObs>& observations) {
-	// TODO: Find the predicted measurement that is closest to each observed measurement and assign the
-	//   observed measurement to this particular landmark.
-	// NOTE: this method will NOT be called by the grading code. But you will probably find it useful to
-	//   implement this method and use it as a helper during the updateWeights phase.
-
+	//cout << "a" << endl;
 }
 
 inline void ParticleFilter::addObservation(Particle& p, const LandmarkObs& obs, const double& sensor_range, vector<LandmarkObs>& p_observations) {
@@ -177,6 +167,43 @@ void ParticleFilter::resample() {
 	// NOTE: You may find std::discrete_distribution helpful here.
 	//   http://en.cppreference.com/w/cpp/numeric/random/discrete_distribution
 
+	//W2max = max(w) * 2
+	//	w_i = 0
+
+	//	for i in range(N) :
+	//		beta = random.gauss(0, W2max)
+	//		while w[w_i] < beta :
+	//			beta = beta - w[w_i]
+	//			w_i += 1
+	//			if w_i >= N :
+	//				w_i = 0
+	//				p3.append(p[w_i])
+
+	//double w_max = 0;
+
+	vector<double> weights;
+	double weight_sum = 0;
+	for (auto p_it = particles.begin(); p_it != particles.end(); ++p_it) {
+		double w = p_it->weight;
+		weight_sum += w;
+		weights.push_back(w);
+
+	}
+
+	cout << "weight_sum: " << weight_sum << endl;
+
+	if (weight_sum == 0) return;
+
+	std::random_device rd;
+	std::mt19937 gen(rd());
+	std::discrete_distribution<size_t> d(weights.begin(), weights.end());
+
+	vector<Particle> resampled_particles;
+	for (size_t i = 0; i < num_particles; ++i) {
+		resampled_particles.push_back(particles[d(gen)]);
+	}
+
+	particles = resampled_particles;
 }
 
 Particle ParticleFilter::SetAssociations(Particle particle, std::vector<int> associations, std::vector<double> sense_x, std::vector<double> sense_y) {
